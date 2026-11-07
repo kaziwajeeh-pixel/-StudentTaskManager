@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A student task manager powered by a Solidity smart contract on Sepolia.">
+  <title>Student Task Manager | Sepolia dApp</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home">TaskChain</a>
+    <span class="network-pill"><span class="dot"></span> Sepolia Testnet</span>
+  </header>
+
+  <main id="home" class="container">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">A SIMPLE BLOCKCHAIN DAPP</p>
+        <h1>Make your tasks <span>count.</span></h1>
+        <p class="intro">Manage your university tasks with a smart contract. Connect your wallet, add a task, and record its completion on Sepolia.</p>
+        <ul class="feature-list">
+          <li>Tasks are stored by your wallet address</li>
+          <li>Adding and updating tasks requires a transaction</li>
+          <li>Task information can be read from the blockchain</li>
+        </ul>
+        <a class="text-link" href="https://sepolia.etherscan.io/" target="_blank" rel="noopener noreferrer">Explore Sepolia Etherscan ↗</a>
+      </div>
+      <div class="hero-art">
+        <img src="task-illustration.svg" alt="Illustration of a checklist with completed tasks">
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">WALLET</p>
+          <h2>Connect your wallet</h2>
+        </div>
+        <span id="connectionStatus" class="status">Not connected</span>
+      </div>
+      <button id="connectButton" class="button primary">Connect MetaMask</button>
+      <p id="walletAddress" class="muted" aria-live="polite">Your wallet address will appear here.</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">SMART CONTRACT</p>
+          <h2>Contract connection</h2>
+        </div>
+      </div>
+      <label for="contractAddress">Deployed contract address</label>
+      <div class="address-row">
+        <input id="contractAddress" type="text" value="0xb7566447804df74319F1907368b99954ce778e81" placeholder="Paste your Sepolia contract address (0x...)" autocomplete="off">
+        <button id="loadContractButton" class="button secondary">Load contract</button>
+      </div>
+      <p class="muted small">After deploying SmartContract.sol in Remix, paste the deployed address here. This page does not deploy the contract.</p>
+      <p id="contractStatus" class="message" aria-live="polite">Contract not loaded.</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">YOUR TASKS</p>
+          <h2>Student task board</h2>
+        </div>
+        <div class="count"><strong id="taskCount">—</strong><span>total tasks</span></div>
+      </div>
+
+      <form id="taskForm" class="task-form">
+        <label class="sr-only" for="taskInput">New task description</label>
+        <input id="taskInput" type="text" maxlength="200" placeholder="e.g. Complete Blockchain Assignment 2" required>
+        <button id="addTaskButton" class="button primary" type="submit">Add task</button>
+      </form>
+      <p class="muted small">Adding a task and changing its status require Sepolia test ETH for gas.</p>
+      <p id="feedback" class="message" role="status" aria-live="polite"></p>
+      <ul id="taskList" class="task-list">
+        <li class="empty-state">Connect your wallet and load your deployed contract to view tasks.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>Student Task Manager — MG3012 Blockchain Technology for Business</p>
+      <p><a href="https://remix.ethereum.org/" target="_blank" rel="noopener noreferrer">Remix IDE</a> · <a href="https://metamask.io/" target="_blank" rel="noopener noreferrer">MetaMask</a> · <a href="https://ethereum.org/en/developers/docs/" target="_blank" rel="noopener noreferrer">Ethereum documentation</a></p>
+    </footer>
+  </main>
+
+  <script>
+    // ABI must match SmartContract.sol. The contract address is entered after deployment.
+    const CONTRACT_ABI = [
+      "function addTask(string _description)",
+      "function toggleTask(uint256 _taskId)",
+      "function getTask(uint256 _taskId) view returns (string description, bool completed)",
+      "function getTaskCount() view returns (uint256)"
+    ];
+    const SEPOLIA_CHAIN_ID = "0xaa36a7";
+
+    let provider;
+    let signer;
+    let contract;
+    let currentAccount;
+
+    const $ = (id) => document.getElementById(id);
+    const connectButton = $("connectButton");
+    const loadContractButton = $("loadContractButton");
+    const taskForm = $("taskForm");
+
+    function showMessage(elementId, message, type = "") {
+      const element = $(elementId);
+      element.textContent = message;
+      element.className = type ? `message ${type}` : "message";
+    }
+
+    function requireWalletAndContract() {
+      if (!window.ethereum) throw new Error("MetaMask was not detected. Install the MetaMask browser extension.");
+      if (!signer || !currentAccount) throw new Error("Connect your MetaMask wallet first.");
+      if (!contract) throw new Error("Load your deployed contract address first.");
+    }
+
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) {
+          throw new Error("MetaMask was not detected. Install the MetaMask browser extension.");
+        }
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        if (!accounts.length) throw new Error("No wallet account was selected.");
+
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155111n) {
+          throw new Error("Please switch MetaMask to the Sepolia test network, then connect again.");
+        }
+
+        signer = await provider.getSigner();
+        currentAccount = accounts[0];
+        $("connectionStatus").textContent = "Connected";
+        $("connectionStatus").classList.add("connected");
+        $("walletAddress").textContent = `Connected wallet: ${currentAccount}`;
+        connectButton.textContent = "Wallet connected";
+        showMessage("feedback", "Wallet connected to Sepolia.", "success");
+        if (contract) await refreshTasks();
+      } catch (error) {
+        showMessage("feedback", error.shortMessage || error.message || "Wallet connection failed.", "error");
+      }
+    }
+
+    async function loadContract() {
+      try {
+        if (!window.ethereum) throw new Error("MetaMask was not detected. Install the MetaMask browser extension.");
+        if (!signer || !currentAccount) throw new Error("Connect your MetaMask wallet first.");
+        const address = $("contractAddress").value.trim();
+        if (!ethers.isAddress(address)) throw new Error("Enter a valid deployed contract address.");
+        contract = new ethers.Contract(address, CONTRACT_ABI, signer);
+        // A read call verifies that the address contains a compatible contract.
+        await contract.getTaskCount();
+        $("contractStatus").textContent = "Contract loaded successfully.";
+        $("contractStatus").className = "message success";
+        await refreshTasks();
+      } catch (error) {
+        contract = null;
+        showMessage("contractStatus", error.shortMessage || error.message || "Could not load contract.", "error");
+      }
+    }
+
+    async function refreshTasks() {
+      try {
+        requireWalletAndContract();
+        const count = await contract.getTaskCount();
+        $("taskCount").textContent = count.toString();
+        const list = $("taskList");
+        list.replaceChildren();
+
+        if (count === 0n) {
+          const empty = document.createElement("li");
+          empty.className = "empty-state";
+          empty.textContent = "No tasks yet. Add your first task above.";
+          list.appendChild(empty);
+          return;
+        }
+
+        for (let i = 0n; i < count; i++) {
+          const [description, completed] = await contract.getTask(i);
+          const item = document.createElement("li");
+          item.className = `task-item${completed ? " completed" : ""}`;
+
+          const details = document.createElement("div");
+          details.className = "task-details";
+          const title = document.createElement("span");
+          title.className = "task-title";
+          title.textContent = description;
+          const meta = document.createElement("span");
+          meta.className = "task-meta";
+          meta.textContent = `Task #${i.toString()} · ${completed ? "Completed" : "Pending"}`;
+          details.append(title, meta);
+
+          const toggle = document.createElement("button");
+          toggle.className = "button small-button";
+          toggle.type = "button";
+          toggle.textContent = completed ? "Mark pending" : "Complete";
+          toggle.addEventListener("click", () => toggleTask(i));
+          item.append(details, toggle);
+          list.appendChild(item);
+        }
+      } catch (error) {
+        showMessage("feedback", error.shortMessage || error.message || "Could not read tasks.", "error");
+      }
+    }
+
+    async function addTask(event) {
+      event.preventDefault();
+      try {
+        requireWalletAndContract();
+        const description = $("taskInput").value.trim();
+        if (!description) throw new Error("Enter a task description.");
+        showMessage("feedback", "Waiting for MetaMask transaction approval…");
+        const transaction = await contract.addTask(description);
+        showMessage("feedback", `Transaction submitted: ${transaction.hash}`, "pending");
+        await transaction.wait();
+        $("taskInput").value = "";
+        showMessage("feedback", "Task added successfully. Transaction confirmed on Sepolia.", "success");
+        await refreshTasks();
+      } catch (error) {
+        showMessage("feedback", error.shortMessage || error.reason || error.message || "Could not add task.", "error");
+      }
+    }
+
+    async function toggleTask(taskId) {
+      try {
+        requireWalletAndContract();
+        showMessage("feedback", "Waiting for MetaMask transaction approval…");
+        const transaction = await contract.toggleTask(taskId);
+        showMessage("feedback", `Transaction submitted: ${transaction.hash}`, "pending");
+        await transaction.wait();
+        showMessage("feedback", "Task status updated successfully on Sepolia.", "success");
+        await refreshTasks();
+      } catch (error) {
+        showMessage("feedback", error.shortMessage || error.reason || error.message || "Could not update task.", "error");
+      }
+    }
+
+    connectButton.addEventListener("click", connectWallet);
+    loadContractButton.addEventListener("click", loadContract);
+    taskForm.addEventListener("submit", addTask);
+
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", () => window.location.reload());
+      window.ethereum.on("chainChanged", () => window.location.reload());
+    }
+  </script>
+</body>
+</html>

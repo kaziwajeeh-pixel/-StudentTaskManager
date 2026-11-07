@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 360" role="img" aria-labelledby="title desc">
+<title id="title">Student checklist illustration</title><desc id="desc">A blue clipboard with check marks and task lines.</desc>
+<rect x="70" y="38" width="270" height="290" rx="28" fill="#e9eeff"/>
+<rect x="105" y="65" width="210" height="255" rx="18" fill="#fff" stroke="#d8e0ff" stroke-width="3"/>
+<rect x="170" y="48" width="80" height="32" rx="12" fill="#3659d9"/>
+<rect x="185" y="40" width="50" height="16" rx="8" fill="#253f9e"/>
+<g fill="none" stroke="#3659d9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+<path d="M132 130l12 12 23-27"/><path d="M132 190l12 12 23-27"/><path d="M132 250l12 12 23-27"/>
+</g>
+<g fill="#b8c5ef"><rect x="184" y="122" width="96" height="10" rx="5"/><rect x="184" y="140" width="76" height="7" rx="3.5"/><rect x="184" y="182" width="108" height="10" rx="5"/><rect x="184" y="200" width="68" height="7" rx="3.5"/><rect x="184" y="242" width="92" height="10" rx="5"/><rect x="184" y="260" width="80" height="7" rx="3.5"/></g>
+<circle cx="335" cy="95" r="27" fill="#f7c76a"/><path d="M326 95l7 7 13-16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="78" cy="270" r="13" fill="#91a6f3"/><path d="M348 230l10 10m0-10l-10 10" stroke="#91a6f3" stroke-width="5" stroke-linecap="round"/>
+</svg>
